@@ -53,10 +53,7 @@ export function Header({ lastUpdated, isLive, globalRisk, signals }: HeaderProps
             <div className="flex items-center gap-3">
               <span className="text-xl text-emerald-500">△</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-emerald-500 font-semibold tracking-wide text-sm">DSINT</span>
-                <span className="hidden sm:inline text-zinc-600 text-[10px] tracking-wider">
-                  DELTA SIGNAL INTELLIGENCE
-                </span>
+                <span className="text-emerald-500 font-semibold tracking-wide text-sm">DELTA INTELLIGENCE</span>
               </div>
             </div>
 

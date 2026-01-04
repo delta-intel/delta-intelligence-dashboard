@@ -186,9 +186,7 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-[10px] text-zinc-700">
             <div className="flex items-center gap-2">
               <span className="text-emerald-500">△</span>
-              <span>DSINT v0.1.0</span>
-              <span className="text-zinc-800">│</span>
-              <span>Delta Signal Intelligence</span>
+              <span>Delta Intelligence v0.1.0</span>
             </div>
             <div className="text-zinc-600">
               Sources: Wikimedia API • Frankfurter API • Illustrative mocks

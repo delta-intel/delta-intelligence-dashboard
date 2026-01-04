@@ -13,19 +13,19 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "DSINT | Delta Signal Intelligence",
+  title: "Delta Intelligence",
   description: "Real-time geopolitical and market risk dashboard. Open source intelligence signals derived from public data.",
-  keywords: ["OSINT", "DSINT", "geopolitical risk", "market signals", "risk dashboard", "real-time intelligence"],
-  authors: [{ name: "DSINT" }],
+  keywords: ["OSINT", "Delta Intelligence", "geopolitical risk", "market signals", "risk dashboard", "real-time intelligence"],
+  authors: [{ name: "Delta Intelligence" }],
   openGraph: {
-    title: "DSINT | Delta Signal Intelligence",
+    title: "Delta Intelligence",
     description: "Real-time OSINT risk signals dashboard",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "DSINT",
-    description: "Delta Signal Intelligence - Real-time OSINT risk signals",
+    title: "Delta Intelligence",
+    description: "Delta Intelligence - Real-time OSINT risk signals",
   },
   robots: "index, follow",
 };

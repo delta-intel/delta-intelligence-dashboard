@@ -1,134 +1,98 @@
 # △ Delta Intelligence
 
-**Delta Intelligence** — Real-time OSINT risk dashboard monitoring unconventional signals that may precede major geopolitical events.
-
 ```
-      ▲        ██████╗ ███████╗██╗███╗   ██╗████████╗
-     ╱█╲       ██╔══██╗██╔════╝██║████╗  ██║╚══██╔══╝
-    ╱███╲      ██║  ██║███████╗██║██╔██╗ ██║   ██║
-   ╱█████╲     ██║  ██║╚════██║██║██║╚██╗██║   ██║
-  ╱███████╲    ██████╔╝███████║██║██║ ╚████║   ██║
- ▔▔▔▔▔▔▔▔▔▔   ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝   ╚═╝
+ ██████╗ ███████╗██╗  ████████╗ █████╗
+ ██╔══██╗██╔════╝██║  ╚══██╔══╝██╔══██╗
+ ██║  ██║█████╗  ██║     ██║   ███████║
+ ██║  ██║██╔══╝  ██║     ██║   ██╔══██║
+ ██████╔╝███████╗███████╗██║   ██║  ██║
+ ╚═════╝ ╚══════╝╚══════╝╚═╝   ╚═╝  ╚═╝
 ```
 
-## Overview
+The thesis is simple: major events leave traces in public data before they hit headlines. Internet goes dark, Wikipedia spikes, safe-haven currencies move, traffic patterns shift. All observable. All public. All in real-time.
 
-Delta Intelligence aggregates public data signals, compares them to historical baselines, and surfaces them as explainable risk indicators. Monitors the delta — the change from normal — across multiple signal types.
+This aggregates the noise and finds the signal.
 
-## Quick Start
+## why
+
+Information asymmetry is compressing to zero. The tools to see what's happening exist — they're just scattered across a dozen tabs. This puts them in one place.
+
+The wikipedia → crisis correlation actually holds up surprisingly well.
+
+## run it
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+[localhost:3000](http://localhost:3000)
 
-## Signals
+## signals
 
-### Real Data Sources
+**Live feeds:**
+- **Wikipedia attention** — crisis articles trending in real-time pageviews
+- **Safe-haven flows** — CHF/USD, JPY/USD movement as risk proxies
 
-| Signal | Source | Description |
-|--------|--------|-------------|
-| Wikipedia Attention Spikes | [Wikimedia API](https://wikimedia.org/api/rest_v1/) | Detects crisis-related articles trending in top Wikipedia pages |
-| Safe-Haven Asset Movement | [Frankfurter API](https://www.frankfurter.app/) | Monitors CHF/USD and JPY/USD as safe-haven flow proxies |
+**Simulated (for now):**
+- Internet connectivity disruptions (BGP routes, latency)
+- Border/maritime traffic anomalies
+- GPS/GNSS interference patterns
+- Activity near sensitive locations
 
-### Mock/Illustrative Data
+Mock data uses realistic patterns based on historical events. Real APIs get swapped in as they become accessible.
 
-| Signal | Description | Based On |
-|--------|-------------|----------|
-| Internet Connectivity Disruptions | BGP route changes, latency spikes | [Cloudflare Radar](https://radar.cloudflare.com/) patterns |
-| Traffic Pattern Anomalies | Border crossings, maritime traffic | [MarineTraffic](https://www.marinetraffic.com/) patterns |
-| GPS/GNSS Interference | Spoofing/jamming incidents | [GPSJam](https://gpsjam.org/) patterns |
-| Activity Near Sensitive Locations | Movement patterns near government hubs | Illustrative concept only |
+## scoring
 
-## Scoring System
+Everything normalized to 0-100:
 
-All signals are normalized to a 0-100 scale:
+| Range | Status | Meaning |
+|-------|--------|---------|
+| 0-34 | Normal | baseline noise |
+| 35-64 | Elevated | worth watching |
+| 65-100 | High | something's happening |
 
-| Score Range | Status | Color |
-|-------------|--------|-------|
-| 0-34 | Normal | Green |
-| 35-64 | Elevated | Amber |
-| 65-100 | High | Red |
+Real API signals weighted 2x vs mock. Trend arrows show ±3pt movement.
 
-### Global Risk Calculation
-
-The global risk score is a weighted average of all signals:
-- **Real API signals**: Weight = 2
-- **Mock signals**: Weight = 1
-
-Trend indicators:
-- ↑ Score increased by >3 points since last update
-- ↓ Score decreased by >3 points since last update
-- → Score stable (within ±3 points)
-
-### Confidence Levels
-
-- **High**: Real API data, well-established methodology
-- **Medium**: Real API data with inference, or reliable mock patterns
-- **Low**: Illustrative data, experimental methodology
-
-## Architecture
-
-```
-src/
-├── app/
-│   ├── globals.css     # Terminal styling
-│   ├── layout.tsx      # Root layout with metadata
-│   └── page.tsx        # Main dashboard
-├── components/
-│   ├── Header.tsx      # △ logo, live indicator
-│   ├── GlobalRiskOverview.tsx
-│   ├── SignalCard.tsx
-│   ├── SignalFeed.tsx
-│   ├── RegionalFilter.tsx
-│   ├── StatusBadge.tsx
-│   └── ErrorState.tsx
-├── lib/
-│   ├── signals.ts      # Data fetching (real + mock)
-│   ├── hooks.ts        # useDashboard hook with polling
-│   └── utils.ts        # Helper functions
-└── types/
-    └── index.ts        # TypeScript definitions
-```
-
-## Features
-
-- Dark mode with terminal aesthetic
-- Real-time updates via 60-second polling
-- Regional filtering with recalculated scores
-- Mobile responsive
-- Clear labeling of mock vs real data
-
-## Tech Stack
+## stack
 
 - Next.js 16 (App Router)
 - TypeScript
-- Tailwind CSS
+- Tailwind
+- 60s polling interval
 
-## Configuration
+Intentionally minimal. No auth, no persistence, no complexity. Just the feed.
 
-### Polling Interval
+## architecture
 
-Edit `src/lib/hooks.ts`:
-```typescript
-const POLL_INTERVAL = 60000; // milliseconds
+```
+src/
+├── app/           # pages
+├── components/    # UI bits
+├── lib/           # data fetching + hooks
+└── types/         # TS definitions
 ```
 
-### Adding New Signals
+## adding signals
 
-1. Add signal type to `src/types/index.ts`
-2. Create fetch function in `src/lib/signals.ts`
+1. Define type in `src/types/index.ts`
+2. Write fetch function in `src/lib/signals.ts`
 3. Add to `fetchAllSignals()` array
 
-## Limitations
+PRs welcome if you have access to interesting data sources.
 
-- Wikipedia API has ~24h data lag
-- Mock signals use randomized realistic patterns
-- No historical data storage
-- No user authentication
+## limitations
 
-## Disclaimer
+- Wikipedia API has ~24h lag
+- No historical storage yet
+- Mock signals are probabilistic
 
-Experimental research tool. Signals are derived from public data and may be inaccurate. Not financial advice.
+## disclaimer
+
+Research tool. Public data. Not predictions. Not financial advice.
+
+If you're using this for anything serious, you should probably also be looking at the primary sources.
+
+---
+
+*The best time to know something is before everyone else. The second best time is now.*
