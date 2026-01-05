@@ -192,6 +192,16 @@ export default function Dashboard() {
               Sources: Wikimedia • Frankfurter • USGS • NASA EONET • GDELT • IODA • OpenSky
             </div>
           </div>
+          <div className="mt-4 text-[10px] text-zinc-600">
+            <a
+              href="https://bonk.fun/token/9E1gpFkxN5ETiQqzk8QjacXzSCqKxFS6rGWQDGExbonk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-500 transition-colors"
+            >
+              9E1gpFkxN5ETiQqzk8QjacXzSCqKxFS6rGWQDGExbonk
+            </a>
+          </div>
         </footer>
       </main>
     </div>
