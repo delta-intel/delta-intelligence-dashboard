@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 browser-img.png
+
+# markdown
+*.md
+!README.md

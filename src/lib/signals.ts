@@ -1,5 +1,12 @@
 import { Signal, SignalStatus, ConfidenceLevel, Region, GlobalRisk, TrendDirection } from '@/types';
 import { clamp } from './utils';
+import { logSignalError } from './logger';
+import {
+  CRISIS_KEYWORDS,
+  isCrisisArticle,
+  CURRENCY_BASELINES,
+  detectRegionFromCoordinates,
+} from './config';
 
 // Helper to determine status from score
 function scoreToStatus(score: number): SignalStatus {
@@ -41,12 +48,6 @@ function countryToRegion(countryCode: string): Region {
 // ============================================
 // REAL API: Wikipedia Pageview Spikes
 // ============================================
-const CRISIS_KEYWORDS = [
-  'War', 'Military_conflict', 'Invasion', 'Coup',
-  'Nuclear', 'Martial_law', 'Emergency', 'Assassination',
-  'Terrorist', 'Bombing', 'Missile', 'Attack'
-];
-
 async function fetchWikipediaSignal(): Promise<Signal | null> {
   try {
     const yesterday = new Date();
@@ -63,8 +64,9 @@ async function fetchWikipediaSignal(): Promise<Signal | null> {
     const data = await response.json();
     const articles = data.items?.[0]?.articles || [];
 
+    // BUG #4 FIX: Use stricter crisis keywords with validation
     const crisisArticles = articles.slice(0, 100).filter((a: { article: string }) =>
-      CRISIS_KEYWORDS.some(kw => a.article.toLowerCase().includes(kw.toLowerCase()))
+      isCrisisArticle(a.article, CRISIS_KEYWORDS)
     );
 
     const score = clamp(crisisArticles.length * 12 + 15, 0, 100);
@@ -84,7 +86,15 @@ async function fetchWikipediaSignal(): Promise<Signal | null> {
       sourceName: 'Wikimedia API',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'wikipedia-spikes',
+      sourceName: 'Wikimedia API',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: error instanceof SyntaxError ? 'parsing' : 'network',
+    });
     return null;
   }
 }
@@ -102,12 +112,13 @@ async function fetchSafeHavenSignal(): Promise<Signal | null> {
     if (!response.ok) throw new Error('Forex API error');
 
     const data = await response.json();
-    const chfRate = data.rates?.CHF || 0.88;
-    const jpyRate = data.rates?.JPY || 150;
+    // BUG #3 FIX: Use configurable baselines instead of hardcoded values
+    const chfRate = data.rates?.CHF || CURRENCY_BASELINES.CHF;
+    const jpyRate = data.rates?.JPY || CURRENCY_BASELINES.JPY;
 
     // Safe-haven currencies strengthening = higher risk environment
-    const chfDeviation = ((chfRate - 0.88) / 0.88) * 100;
-    const jpyDeviation = ((150 - jpyRate) / 150) * 100;
+    const chfDeviation = ((chfRate - CURRENCY_BASELINES.CHF) / CURRENCY_BASELINES.CHF) * 100;
+    const jpyDeviation = ((CURRENCY_BASELINES.JPY - jpyRate) / CURRENCY_BASELINES.JPY) * 100;
 
     const safeHavenFlow = (chfDeviation + jpyDeviation) / 2;
     const score = clamp(45 + safeHavenFlow * 8, 0, 100);
@@ -119,13 +130,21 @@ async function fetchSafeHavenSignal(): Promise<Signal | null> {
       status: scoreToStatus(score),
       score: Math.round(score),
       explanation: `CHF/USD at ${chfRate.toFixed(3)}, JPY/USD at ${jpyRate.toFixed(1)}. ${score > 55 ? 'Elevated' : 'Normal'} safe-haven flows.`,
-      baselineComparison: `${safeHavenFlow > 0 ? '+' : ''}${safeHavenFlow.toFixed(1)}% vs baseline`,
+      baselineComparison: `${safeHavenFlow > 0 ? '+' : ''}${safeHavenFlow.toFixed(1)}% vs baseline (updated ${CURRENCY_BASELINES.lastUpdated.toLocaleDateString()})`,
       confidence: 'high' as ConfidenceLevel,
       sourceUrl: 'https://www.frankfurter.app/',
       sourceName: 'Frankfurter API',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'safe-haven-flows',
+      sourceName: 'Frankfurter API',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: 'network',
+    });
     return null;
   }
 }
@@ -169,18 +188,12 @@ async function fetchEarthquakeSignal(): Promise<Signal | null> {
       features[0] || { properties: { mag: 0, place: 'N/A' } }
     );
 
-    // Determine region from largest quake location
+    // BUG #6 FIX: Use improved region detection function
     const coords = largest?.geometry?.coordinates || [0, 0];
     const lng = coords[0];
     const lat = coords[1];
 
-    let region: Region = 'global';
-    if (lat > 15 && lat < 75 && lng > -170 && lng < -50) region = 'north-america';
-    else if (lat > 35 && lat < 72 && lng > -10 && lng < 60) region = 'europe';
-    else if (lat > -50 && lat < 60 && lng > 60 && lng < 180) region = 'asia-pacific';
-    else if (lat > -40 && lat < 15 && lng > -90 && lng < -30) region = 'south-america';
-    else if (lat > -40 && lat < 40 && lng > -20 && lng < 55) region = 'africa';
-    else if (lat > 10 && lat < 45 && lng > 25 && lng < 75) region = 'middle-east';
+    const region = detectRegionFromCoordinates(lat, lng) as Region;
 
     const score = clamp(major.length * 25 + significant.length * 5 + 10, 0, 100);
 
@@ -197,7 +210,15 @@ async function fetchEarthquakeSignal(): Promise<Signal | null> {
       sourceName: 'USGS Earthquake Hazards',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'seismic-activity',
+      sourceName: 'USGS Earthquake Hazards',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: 'network',
+    });
     return null;
   }
 }
@@ -230,17 +251,13 @@ async function fetchNaturalEventsSignal(): Promise<Signal | null> {
     const storms = events.filter(e => e.categories.some(c => c.id === 'severeStorms'));
     const volcanoes = events.filter(e => e.categories.some(c => c.id === 'volcanoes'));
 
-    // Determine primary region
+    // BUG #6 FIX: Use improved region detection function
     let region: Region = 'global';
     if (events.length > 0 && events[0].geometry?.[0]?.coordinates) {
       const coords = events[0].geometry[0].coordinates;
       const lng = coords[0];
       const lat = coords[1];
-      if (lat > 15 && lat < 75 && lng > -170 && lng < -50) region = 'north-america';
-      else if (lat > 35 && lat < 72 && lng > -10 && lng < 60) region = 'europe';
-      else if (lat > -50 && lat < 60 && lng > 60 && lng < 180) region = 'asia-pacific';
-      else if (lat > -40 && lat < 15 && lng > -90 && lng < -30) region = 'south-america';
-      else if (lat > -40 && lat < 40 && lng > -20 && lng < 55) region = 'africa';
+      region = detectRegionFromCoordinates(lat, lng) as Region;
     }
 
     const score = clamp(wildfires.length * 4 + storms.length * 6 + volcanoes.length * 8 + 15, 0, 100);
@@ -258,7 +275,15 @@ async function fetchNaturalEventsSignal(): Promise<Signal | null> {
       sourceName: 'NASA EONET',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'natural-events',
+      sourceName: 'NASA EONET',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: 'network',
+    });
     return null;
   }
 }
@@ -288,10 +313,16 @@ async function fetchGdeltSignal(): Promise<Signal | null> {
     const data = await response.json();
     const articles: GDELTArticle[] = data.articles || [];
 
-    // Analyze tone (negative tone = higher risk)
-    const avgTone = articles.length > 0
-      ? articles.reduce((sum, a) => sum + (a.tone || 0), 0) / articles.length
-      : 0;
+    // BUG #2 FIX: Always initialize avgTone with proper null handling
+    let avgTone = 0;
+    let confidence: ConfidenceLevel = 'low';
+
+    if (articles.length > 0) {
+      const tones = articles.map(a => a.tone ?? 0);
+      avgTone = tones.reduce((sum, a) => sum + a, 0) / articles.length;
+      // Higher confidence with more articles
+      confidence = articles.length >= 10 ? 'high' : articles.length >= 5 ? 'medium' : 'low';
+    }
 
     // Count by region
     const regionCounts: Record<string, number> = {};
@@ -303,8 +334,9 @@ async function fetchGdeltSignal(): Promise<Signal | null> {
     const topRegion = Object.entries(regionCounts)
       .sort((a, b) => b[1] - a[1])[0]?.[0] as Region || 'global';
 
-    // Negative tone increases score
-    const score = clamp(50 + (avgTone * -5) + (articles.length / 5), 0, 100);
+    // BUG #2 FIX: Use baseline score when no articles found
+    const baselineScore = articles.length === 0 ? 40 : 50;
+    const score = clamp(baselineScore + (avgTone * -5) + (articles.length / 5), 0, 100);
 
     return {
       id: 'gdelt-news',
@@ -312,14 +344,24 @@ async function fetchGdeltSignal(): Promise<Signal | null> {
       region: topRegion,
       status: scoreToStatus(score),
       score: Math.round(score),
-      explanation: `${articles.length} crisis-related articles in 24h. Average tone: ${avgTone.toFixed(2)} (negative = concerning).`,
-      baselineComparison: `${avgTone < -2 ? 'Negative' : avgTone > 2 ? 'Positive' : 'Neutral'} sentiment`,
-      confidence: 'medium' as ConfidenceLevel,
+      explanation: articles.length === 0
+        ? 'No recent crisis-related articles detected in GDELT.'
+        : `${articles.length} crisis-related articles in 24h. Average tone: ${avgTone.toFixed(2)} (negative = concerning).`,
+      baselineComparison: `${articles.length === 0 ? 'No data' : avgTone < -2 ? 'Negative' : avgTone > 2 ? 'Positive' : 'Neutral'} sentiment`,
+      confidence,
       sourceUrl: 'https://www.gdeltproject.org/',
       sourceName: 'GDELT Project',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'gdelt-news',
+      sourceName: 'GDELT Project',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: error instanceof SyntaxError ? 'parsing' : 'network',
+    });
     return null;
   }
 }
@@ -361,8 +403,9 @@ async function fetchInternetOutageSignal(): Promise<Signal | null> {
 
       const score = clamp(alerts.length * 8 + 15, 0, 100);
 
+      // BUG #1 FIX: Use unique ID for fallback path to avoid duplicate signal IDs
       return {
-        id: 'internet-outages',
+        id: 'internet-outages-alerts',
         name: 'Internet Connectivity Disruptions',
         region: 'global' as Region,
         status: scoreToStatus(score),
@@ -371,7 +414,7 @@ async function fetchInternetOutageSignal(): Promise<Signal | null> {
         baselineComparison: `${alerts.length > 5 ? '+' : ''}${alerts.length - 5} vs daily avg`,
         confidence: 'medium' as ConfidenceLevel,
         sourceUrl: 'https://ioda.inetintel.cc.gatech.edu/',
-        sourceName: 'IODA (Georgia Tech)',
+        sourceName: 'IODA (Georgia Tech) - Alerts Endpoint',
         lastUpdated: new Date(),
       };
     }
@@ -406,7 +449,15 @@ async function fetchInternetOutageSignal(): Promise<Signal | null> {
       sourceName: 'IODA (Georgia Tech)',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'internet-outages',
+      sourceName: 'IODA (Georgia Tech)',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: 'network',
+    });
     return null;
   }
 }
@@ -416,10 +467,10 @@ async function fetchInternetOutageSignal(): Promise<Signal | null> {
 // ============================================
 async function fetchFlightSignal(): Promise<Signal | null> {
   try {
-    // OpenSky API - get current flight states
-    // We'll analyze flight density and look for unusual patterns
+    // BUG #5 FIX: Fetch global flight data instead of just North America
+    // Note: This may hit rate limits, which is documented by OpenSky
     const response = await fetch(
-      'https://opensky-network.org/api/states/all?lamin=25&lomin=-130&lamax=50&lomax=-60',
+      'https://opensky-network.org/api/states/all',
       { next: { revalidate: 600 } } // Cache for 10 min due to rate limits
     );
 
@@ -434,32 +485,56 @@ async function fetchFlightSignal(): Promise<Signal | null> {
       return squawk === '7500' || squawk === '7600' || squawk === '7700';
     });
 
-    // Count grounded/unusual flights
-    const grounded = states.filter((s: (string | number | boolean | null)[]) => {
+    // Count unusual altitude/velocity combinations
+    const anomalous = states.filter((s: (string | number | boolean | null)[]) => {
       const altitude = s[7] as number;
+      const velocity = s[9] as number;
       const onGround = Boolean(s[8]);
-      return !onGround && altitude < 100;
+      // Detect unusual climb/descent with low velocity
+      return !onGround && altitude && velocity && velocity < 10 && altitude < 500;
     });
 
+    // BUG #5 FIX: Detect region from actual flight data
+    let topRegion: Region = 'global';
+    const regionCounts: Record<string, number> = {};
+    states.forEach((s: (string | number | null)[]) => {
+      const lng = s[5] as number;
+      const lat = s[6] as number;
+      if (lng && lat) {
+        const region = detectRegionFromCoordinates(lat, lng);
+        regionCounts[region] = (regionCounts[region] || 0) + 1;
+      }
+    });
+    topRegion = Object.entries(regionCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] as Region || 'global';
+
     const totalFlights = states.length;
-    const anomalies = emergencySquawks.length + grounded.length;
+    const anomalies = emergencySquawks.length + anomalous.length;
 
     const score = clamp(anomalies * 15 + 20, 0, 100);
 
     return {
       id: 'flight-anomalies',
       name: 'Aviation Traffic Patterns',
-      region: 'north-america' as Region,
+      region: topRegion,
       status: scoreToStatus(score),
       score: Math.round(score),
-      explanation: `${totalFlights} flights tracked. ${emergencySquawks.length} emergency squawks, ${grounded.length} altitude anomalies.`,
+      explanation: `${totalFlights} flights tracked globally. ${emergencySquawks.length} emergency squawks, ${anomalous.length} altitude anomalies.`,
       baselineComparison: `${anomalies > 2 ? 'Above' : 'At'} normal levels`,
       confidence: 'medium' as ConfidenceLevel,
       sourceUrl: 'https://opensky-network.org/',
       sourceName: 'OpenSky Network',
       lastUpdated: new Date(),
     };
-  } catch {
+  } catch (error) {
+    // BUG #7 FIX: Log error instead of silent failure
+    logSignalError({
+      signalId: 'flight-anomalies',
+      sourceName: 'OpenSky Network',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date(),
+      errorType: 'network',
+    });
     return null;
   }
 }
