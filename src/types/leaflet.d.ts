@@ -1,2 +1,1 @@
-declare module 'leaflet/dist/leaflet.css';
-declare module 'leaflet.heat';
+declare module 'maplibre-gl/dist/maplibre-gl.css';

@@ -2,30 +2,21 @@
 
 import { useEffect, useRef } from 'react';
 import { Signal, Region, REGION_LABELS } from '@/types';
-import type L from 'leaflet';
-
-// Extend Leaflet types for heat plugin
-declare module 'leaflet' {
-  interface HeatLayer extends L.Layer {
-    setLatLngs(latlngs: [number, number, number][]): this;
-  }
-  function heatLayer(latlngs: [number, number, number][], options?: object): HeatLayer;
-}
 
 interface HeatMapProps {
   signals: Signal[];
   selectedRegion: Region;
 }
 
-// Region center coordinates
+// Region center coordinates [lng, lat]
 const REGION_COORDS: Record<Region, [number, number]> = {
-  'global': [20, 0],
-  'north-america': [40, -100],
-  'europe': [50, 10],
-  'asia-pacific': [35, 120],
-  'middle-east': [30, 45],
-  'africa': [5, 20],
-  'south-america': [-15, -60],
+  'global': [0, 20],
+  'north-america': [-100, 40],
+  'europe': [10, 50],
+  'asia-pacific': [120, 35],
+  'middle-east': [45, 30],
+  'africa': [20, 5],
+  'south-america': [-60, -15],
 };
 
 // Get status color
@@ -37,177 +28,210 @@ function getStatusColor(status: string): string {
   }
 }
 
-// Generate heat points for signals
-function getHeatPoints(signals: Signal[]): [number, number, number][] {
-  const points: [number, number, number][] = [];
-
-  signals.forEach((signal) => {
-    const baseCoord = REGION_COORDS[signal.region] || REGION_COORDS['global'];
-    const intensity = signal.score / 100;
-
-    // Add main point
-    points.push([baseCoord[0], baseCoord[1], intensity]);
-
-    // Add scatter points for visual effect
-    for (let i = 0; i < 8; i++) {
-      const lat = baseCoord[0] + (Math.random() - 0.5) * 15;
-      const lng = baseCoord[1] + (Math.random() - 0.5) * 25;
-      points.push([lat, lng, intensity * 0.5]);
-    }
-  });
-
-  return points;
-}
-
 export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const heatLayerRef = useRef<L.HeatLayer | null>(null);
-  const markersRef = useRef<L.LayerGroup | null>(null);
+  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
 
     const initMap = async () => {
-      const L = (await import('leaflet')).default;
-      await import('leaflet/dist/leaflet.css');
-      await import('leaflet.heat');
+      const maplibregl = (await import('maplibre-gl')).default;
+      await import('maplibre-gl/dist/maplibre-gl.css');
 
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
       }
 
       const center = REGION_COORDS[selectedRegion];
-      const zoom = selectedRegion === 'global' ? 2 : 4;
+      const zoom = selectedRegion === 'global' ? 1.5 : 3;
 
-      const map = L.map(mapRef.current!, {
+      // Fetch and modify the style
+      const styleResponse = await fetch('https://tiles.stadiamaps.com/styles/stamen_toner_blacklite.json?api_key=b65a1e40-d1e8-4877-beac-ead8d249580b');
+      const style = await styleResponse.json();
+
+      // Modify style to make white colors 50% transparent
+      style.layers = style.layers.map((layer: Record<string, unknown>) => {
+        const newLayer = { ...layer };
+        if (newLayer.paint && typeof newLayer.paint === 'object') {
+          const paint = { ...newLayer.paint } as Record<string, unknown>;
+
+          // Process each paint property
+          Object.keys(paint).forEach(key => {
+            const value = paint[key];
+
+            // Handle direct color strings
+            if (typeof value === 'string') {
+              if (value === 'hsl(0, 0%, 100%)' || value === 'rgba(255, 255, 255, 1)') {
+                paint[key] = 'rgba(255, 255, 255, 0.5)';
+              }
+            }
+
+            // Handle step/interpolate expressions
+            if (Array.isArray(value)) {
+              paint[key] = processColorArray(value);
+            }
+          });
+
+          newLayer.paint = paint;
+        }
+        return newLayer;
+      });
+
+      // Override background color
+      const landLayer = style.layers.find((l: { id: string }) => l.id === 'land');
+      if (landLayer && landLayer.paint) {
+        landLayer.paint['background-color'] = '#0e0c11';
+      }
+
+      const waterLayer = style.layers.find((l: { id: string }) => l.id === 'water');
+      if (waterLayer && waterLayer.paint) {
+        waterLayer.paint['fill-color'] = '#0e0c11';
+      }
+
+      const map = new maplibregl.Map({
+        container: mapRef.current!,
+        style: style,
         center: center,
         zoom: zoom,
-        zoomControl: true,
         attributionControl: false,
-        scrollWheelZoom: true,
-        dragging: true,
-        doubleClickZoom: true,
-        minZoom: 2,
+        minZoom: 1,
         maxZoom: 10,
       });
 
-      // Position zoom control
-      map.zoomControl.setPosition('bottomright');
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
 
-      // Dark tile layer - using Stadia dark tiles
-      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=b65a1e40-d1e8-4877-beac-ead8d249580b', {
-        maxZoom: 20,
-      }).addTo(map);
+      map.on('load', () => {
+        // Add heat source
+        const heatData: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: signals.flatMap((signal) => {
+            const baseCoord = REGION_COORDS[signal.region] || REGION_COORDS['global'];
+            const intensity = signal.score / 100;
+            const features: GeoJSON.Feature[] = [];
 
-      mapInstanceRef.current = map;
+            // Main point
+            features.push({
+              type: 'Feature',
+              properties: { intensity, score: signal.score, name: signal.name },
+              geometry: { type: 'Point', coordinates: [baseCoord[0], baseCoord[1]] }
+            });
 
-      // Create markers layer group
-      const markers = L.layerGroup().addTo(map);
-      markersRef.current = markers;
+            // Scatter points
+            for (let i = 0; i < 12; i++) {
+              features.push({
+                type: 'Feature',
+                properties: { intensity: intensity * 0.4 },
+                geometry: {
+                  type: 'Point',
+                  coordinates: [
+                    baseCoord[0] + (Math.random() - 0.5) * 25,
+                    baseCoord[1] + (Math.random() - 0.5) * 15
+                  ]
+                }
+              });
+            }
 
-      // Add heat layer
-      const heatPoints = getHeatPoints(signals);
-      const heat = L.heatLayer(heatPoints, {
-        radius: 40,
-        blur: 30,
-        maxZoom: 8,
-        max: 1.0,
-        gradient: {
-          0.0: '#064e3b',
-          0.2: '#047857',
-          0.4: '#059669',
-          0.6: '#10b981',
-          0.8: '#34d399',
-          1.0: '#6ee7b7',
-        },
-      }).addTo(map);
+            return features;
+          })
+        };
 
-      heatLayerRef.current = heat;
+        map.addSource('heat-data', {
+          type: 'geojson',
+          data: heatData
+        });
 
-      // Add signal markers with popups
-      signals.forEach((signal) => {
-        const coords = REGION_COORDS[signal.region];
-        if (!coords) return;
+        // Add heatmap layer
+        map.addLayer({
+          id: 'heat-layer',
+          type: 'heatmap',
+          source: 'heat-data',
+          paint: {
+            'heatmap-weight': ['get', 'intensity'],
+            'heatmap-intensity': 1.5,
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 30, 5, 60, 10, 100],
+            'heatmap-opacity': 0.7,
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0, 'rgba(0,0,0,0)',
+              0.1, 'rgba(6,78,59,0.4)',
+              0.3, 'rgba(4,120,87,0.5)',
+              0.5, 'rgba(5,150,105,0.6)',
+              0.7, 'rgba(16,185,129,0.7)',
+              0.9, 'rgba(52,211,153,0.8)',
+              1, 'rgba(110,231,183,0.9)'
+            ]
+          }
+        });
 
-        const color = getStatusColor(signal.status);
+        // Add markers for signals
+        signals.forEach((signal) => {
+          const coords = REGION_COORDS[signal.region];
+          if (!coords) return;
 
-        // Create custom icon
-        const icon = L.divIcon({
-          className: 'custom-marker',
-          html: `<div style="
+          const color = getStatusColor(signal.status);
+
+          // Create marker element
+          const el = document.createElement('div');
+          el.className = 'signal-marker';
+          el.style.cssText = `
             width: 12px;
             height: 12px;
             background: ${color};
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid rgba(0,0,0,0.8);
             border-radius: 50%;
+            cursor: pointer;
             box-shadow: 0 0 10px ${color}80;
-          "></div>`,
-          iconSize: [12, 12],
-          iconAnchor: [6, 6],
-        });
+          `;
 
-        const marker = L.marker(coords, { icon }).addTo(markers);
+          // Create popup
+          const popup = new maplibregl.Popup({
+            offset: 15,
+            closeButton: false,
+            className: 'signal-popup'
+          }).setHTML(`
+            <div style="
+              background: #18181b;
+              border: 1px solid #3f3f46;
+              padding: 12px;
+              font-family: monospace;
+              font-size: 11px;
+              min-width: 200px;
+            ">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="
+                  width: 8px;
+                  height: 8px;
+                  background: ${color};
+                  border-radius: 50%;
+                  box-shadow: 0 0 6px ${color};
+                "></span>
+                <span style="color: #e4e4e7; font-weight: 600;">${signal.name}</span>
+              </div>
+              <div style="color: #71717a; font-size: 9px; text-transform: uppercase; margin-bottom: 6px;">
+                ${REGION_LABELS[signal.region]}
+              </div>
+              <div style="color: #a1a1aa; margin-bottom: 8px; line-height: 1.4;">
+                ${signal.explanation}
+              </div>
+              <div style="display: flex; gap: 12px; color: #52525b; font-size: 10px;">
+                <span>Score: <span style="color: ${color};">${signal.score}</span></span>
+                <span>Δ ${signal.baselineComparison}</span>
+                <span>${signal.confidence.toUpperCase()}</span>
+              </div>
+            </div>
+          `);
 
-        // Add popup
-        marker.bindPopup(`
-          <div style="
-            background: #18181b;
-            color: #e4e4e7;
-            padding: 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 11px;
-            min-width: 200px;
-            border: 1px solid #27272a;
-          ">
-            <div style="
-              color: ${color};
-              font-weight: 600;
-              margin-bottom: 8px;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            ">
-              <span style="
-                width: 8px;
-                height: 8px;
-                background: ${color};
-                border-radius: 50%;
-                display: inline-block;
-              "></span>
-              ${signal.name}
-            </div>
-            <div style="color: #71717a; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">
-              ${REGION_LABELS[signal.region]}
-            </div>
-            <div style="margin: 8px 0; color: #a1a1aa;">
-              ${signal.explanation}
-            </div>
-            <div style="
-              display: flex;
-              justify-content: space-between;
-              border-top: 1px solid #27272a;
-              padding-top: 8px;
-              margin-top: 8px;
-            ">
-              <span style="color: #71717a;">Score</span>
-              <span style="color: ${color}; font-weight: 600;">${signal.score}/100</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #71717a;">Baseline</span>
-              <span style="color: #a1a1aa;">${signal.baselineComparison}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #71717a;">Confidence</span>
-              <span style="color: #a1a1aa; text-transform: uppercase;">${signal.confidence}</span>
-            </div>
-          </div>
-        `, {
-          className: 'custom-popup',
-          closeButton: true,
+          new maplibregl.Marker({ element: el })
+            .setLngLat(coords)
+            .setPopup(popup)
+            .addTo(map);
         });
       });
+
+      mapInstanceRef.current = map;
     };
 
     initMap();
@@ -223,8 +247,6 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
   return (
     <div className="relative w-full h-full min-h-[300px] overflow-hidden" style={{ background: '#0e0c11' }}>
       <div ref={mapRef} className="w-full h-full" style={{ background: '#0e0c11' }} />
-      {/* Overlay gradient for edge fade */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0e0c11]/60 to-transparent" />
       {/* Legend */}
       <div className="absolute bottom-3 left-3 text-[9px] text-zinc-500 uppercase tracking-wider pointer-events-none">
         <div className="flex items-center gap-4 mb-1">
@@ -238,8 +260,32 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
             <span className="w-2 h-2 rounded-full bg-red-500"></span> High
           </span>
         </div>
-        <div className="text-zinc-600">Click markers for details</div>
       </div>
     </div>
   );
 }
+
+// Helper to process color arrays and make white colors 50% transparent
+function processColorArray(arr: unknown[]): unknown[] {
+  return arr.map(item => {
+    if (typeof item === 'string') {
+      if (item === 'hsl(0, 0%, 100%)') {
+        return 'rgba(255, 255, 255, 0.5)';
+      }
+      if (item === 'rgba(255, 255, 255, 1)') {
+        return 'rgba(255, 255, 255, 0.5)';
+      }
+      // Handle rgba with full opacity
+      const rgbaMatch = item.match(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\)/);
+      if (rgbaMatch) {
+        return 'rgba(255, 255, 255, 0.5)';
+      }
+    }
+    if (Array.isArray(item)) {
+      return processColorArray(item);
+    }
+    return item;
+  });
+}
+
+export default HeatMap;
