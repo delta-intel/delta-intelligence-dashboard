@@ -189,7 +189,7 @@ export default function Dashboard() {
               <span>Delta Intelligence v0.1.0</span>
             </div>
             <div className="text-zinc-600">
-              Sources: Wikimedia API • Frankfurter API • Illustrative mocks
+              Sources: Wikimedia • Frankfurter • USGS • NASA EONET • GDELT • IODA • OpenSky
             </div>
           </div>
         </footer>

@@ -98,11 +98,6 @@ export function SignalCard({ signal, index }: SignalCardProps) {
               <span className="text-zinc-600">CONF</span>
               <ConfidenceMeter level={signal.confidence} />
             </div>
-
-            {/* Mock badge */}
-            {signal.isMocked && (
-              <span className="text-zinc-700 uppercase">Mock</span>
-            )}
           </div>
 
           {/* Source + Time */}

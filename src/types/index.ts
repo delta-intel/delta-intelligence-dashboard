@@ -33,7 +33,6 @@ export interface Signal {
   sourceUrl: string;
   sourceName: string;
   lastUpdated: Date;
-  isMocked: boolean;
 }
 
 export interface GlobalRisk {

@@ -9,6 +9,8 @@
  ╚═════╝ ╚══════╝╚══════╝╚═╝   ╚═╝  ╚═╝
 ```
 
+![Delta Intelligence Dashboard](https://i.imgur.com/DEBHGaR.png)
+
 The thesis is simple: major events leave traces in public data before they hit headlines. Internet goes dark, Wikipedia spikes, safe-haven currencies move, traffic patterns shift. All observable. All public. All in real-time.
 
 This aggregates the noise and finds the signal.

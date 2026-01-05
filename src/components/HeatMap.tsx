@@ -213,10 +213,10 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
   }, [selectedRegion, signals]);
 
   return (
-    <div className="relative w-full h-full min-h-[300px] overflow-hidden" style={{ background: '#0d0c10' }}>
-      <div ref={mapRef} className="w-full h-full" style={{ background: '#0d0c10' }} />
+    <div className="relative w-full h-full min-h-[300px] overflow-hidden" style={{ background: '#0e0c11' }}>
+      <div ref={mapRef} className="w-full h-full" style={{ background: '#0e0c11' }} />
       {/* Overlay gradient for edge fade */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0d0c10]/60 to-transparent" />
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0e0c11]/60 to-transparent" />
       {/* Legend */}
       <div className="absolute bottom-3 left-3 text-[9px] text-zinc-500 uppercase tracking-wider pointer-events-none">
         <div className="flex items-center gap-4 mb-1">

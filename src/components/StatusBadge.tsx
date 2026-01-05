@@ -33,16 +33,3 @@ export function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
   );
 }
 
-interface MockBadgeProps {
-  show: boolean;
-}
-
-export function MockBadge({ show }: MockBadgeProps) {
-  if (!show) return null;
-
-  return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700">
-      MOCK
-    </span>
-  );
-}
