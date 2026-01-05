@@ -7,6 +7,12 @@ import {
   CURRENCY_BASELINES,
   detectRegionFromCoordinates,
 } from './config';
+import {
+  fetchVIXSignal,
+  fetchCreditSpreadSignal,
+  fetchOilPriceSignal,
+  fetchTwitterCrisisSignal,
+} from './signals-phase1';
 
 // Helper to determine status from score
 function scoreToStatus(score: number): SignalStatus {
@@ -544,6 +550,7 @@ async function fetchFlightSignal(): Promise<Signal | null> {
 // ============================================
 export async function fetchAllSignals(): Promise<Signal[]> {
   const results = await Promise.allSettled([
+    // Core signals (existing)
     fetchWikipediaSignal(),
     fetchSafeHavenSignal(),
     fetchEarthquakeSignal(),
@@ -551,6 +558,11 @@ export async function fetchAllSignals(): Promise<Signal[]> {
     fetchGdeltSignal(),
     fetchInternetOutageSignal(),
     fetchFlightSignal(),
+    // Phase 1: New financial & market signals (parallel)
+    fetchVIXSignal(),
+    fetchCreditSpreadSignal(),
+    fetchOilPriceSignal(),
+    fetchTwitterCrisisSignal(),
   ]);
 
   const signals: Signal[] = results
