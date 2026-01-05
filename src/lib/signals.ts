@@ -435,9 +435,9 @@ async function fetchFlightSignal(): Promise<Signal | null> {
     });
 
     // Count grounded/unusual flights
-    const grounded = states.filter((s: (string | number | null)[]) => {
+    const grounded = states.filter((s: (string | number | boolean | null)[]) => {
       const altitude = s[7] as number;
-      const onGround = s[8] as boolean;
+      const onGround = Boolean(s[8]);
       return !onGround && altitude < 100;
     });
 

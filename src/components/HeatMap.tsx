@@ -108,7 +108,6 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
 
       // Add heat layer
       const heatPoints = getHeatPoints(signals);
-      // @ts-expect-error - leaflet.heat extends L
       const heat = L.heatLayer(heatPoints, {
         radius: 40,
         blur: 30,
