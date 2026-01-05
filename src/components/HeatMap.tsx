@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Signal, Region, REGION_LABELS } from '@/types';
+import { mapStyle } from '@/lib/mapStyle';
 
 interface HeatMapProps {
   signals: Signal[];
@@ -46,52 +47,9 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
       const center = REGION_COORDS[selectedRegion];
       const zoom = selectedRegion === 'global' ? 1.5 : 3;
 
-      // Fetch and modify the style
-      const styleResponse = await fetch('https://tiles.stadiamaps.com/styles/stamen_toner_blacklite.json?api_key=b65a1e40-d1e8-4877-beac-ead8d249580b');
-      const style = await styleResponse.json();
-
-      // Modify style to make white colors 50% transparent
-      style.layers = style.layers.map((layer: Record<string, unknown>) => {
-        const newLayer = { ...layer };
-        if (newLayer.paint && typeof newLayer.paint === 'object') {
-          const paint = { ...newLayer.paint } as Record<string, unknown>;
-
-          // Process each paint property
-          Object.keys(paint).forEach(key => {
-            const value = paint[key];
-
-            // Handle direct color strings
-            if (typeof value === 'string') {
-              if (value === 'hsl(0, 0%, 100%)' || value === 'rgba(255, 255, 255, 1)') {
-                paint[key] = 'rgba(255, 255, 255, 0.5)';
-              }
-            }
-
-            // Handle step/interpolate expressions
-            if (Array.isArray(value)) {
-              paint[key] = processColorArray(value);
-            }
-          });
-
-          newLayer.paint = paint;
-        }
-        return newLayer;
-      });
-
-      // Override background color
-      const landLayer = style.layers.find((l: { id: string }) => l.id === 'land');
-      if (landLayer && landLayer.paint) {
-        landLayer.paint['background-color'] = '#0e0c11';
-      }
-
-      const waterLayer = style.layers.find((l: { id: string }) => l.id === 'water');
-      if (waterLayer && waterLayer.paint) {
-        waterLayer.paint['fill-color'] = '#0e0c11';
-      }
-
       const map = new maplibregl.Map({
         container: mapRef.current!,
-        style: style,
+        style: mapStyle as maplibregl.StyleSpecification,
         center: center,
         zoom: zoom,
         attributionControl: false,
@@ -245,8 +203,8 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
   }, [selectedRegion, signals]);
 
   return (
-    <div className="relative w-full h-full min-h-[300px] overflow-hidden" style={{ background: '#0e0c11' }}>
-      <div ref={mapRef} className="w-full h-full" style={{ background: '#0e0c11' }} />
+    <div className="relative w-full h-full min-h-[300px] overflow-hidden" style={{ background: '#151518' }}>
+      <div ref={mapRef} className="w-full h-full" style={{ background: '#151518' }} />
       {/* Legend */}
       <div className="absolute bottom-3 left-3 text-[9px] text-zinc-500 uppercase tracking-wider pointer-events-none">
         <div className="flex items-center gap-4 mb-1">
@@ -263,29 +221,6 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
       </div>
     </div>
   );
-}
-
-// Helper to process color arrays and make white colors 50% transparent
-function processColorArray(arr: unknown[]): unknown[] {
-  return arr.map(item => {
-    if (typeof item === 'string') {
-      if (item === 'hsl(0, 0%, 100%)') {
-        return 'rgba(255, 255, 255, 0.5)';
-      }
-      if (item === 'rgba(255, 255, 255, 1)') {
-        return 'rgba(255, 255, 255, 0.5)';
-      }
-      // Handle rgba with full opacity
-      const rgbaMatch = item.match(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\)/);
-      if (rgbaMatch) {
-        return 'rgba(255, 255, 255, 0.5)';
-      }
-    }
-    if (Array.isArray(item)) {
-      return processColorArray(item);
-    }
-    return item;
-  });
 }
 
 export default HeatMap;

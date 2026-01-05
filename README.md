@@ -1,19 +1,12 @@
 # △ Delta Intelligence
 
-```
- ██████╗ ███████╗██╗  ████████╗ █████╗
- ██╔══██╗██╔════╝██║  ╚══██╔══╝██╔══██╗
- ██║  ██║█████╗  ██║     ██║   ███████║
- ██║  ██║██╔══╝  ██║     ██║   ██╔══██║
- ██████╔╝███████╗███████╗██║   ██║  ██║
- ╚═════╝ ╚══════╝╚══════╝╚═╝   ╚═╝  ╚═╝
-```
-
 ![Delta Intelligence Dashboard](https://i.imgur.com/DEBHGaR.png)
 
-The thesis is simple: major events leave traces in public data before they hit headlines. Internet goes dark, Wikipedia spikes, safe-haven currencies move, traffic patterns shift. All observable. All public. All in real-time.
+Major events leave traces in public data before they hit headlines. Internet goes dark, pizza deliveries sky-rocket, Wikipedia spikes, safe-haven currencies move, traffic patterns shift. All observable. All public. All in real-time.
 
 This aggregates the noise and finds the signal.
+
+[View Live Demo &rarr;](https://deltaintel.vercel.app/)
 
 ## why
 
@@ -42,7 +35,7 @@ npm run dev
 - GPS/GNSS interference patterns
 - Activity near sensitive locations
 
-Mock data uses realistic patterns based on historical events. Real APIs get swapped in as they become accessible.
+Have a data source you want to add? [Fork the repo](https://github.com/delta-intel/delta-intelligence-dashboard/fork), add your data source, and create a [pull request &rarr;](https://github.com/delta-intel/delta-intelligence-dashboard/pulls).
 
 ## scoring
 
