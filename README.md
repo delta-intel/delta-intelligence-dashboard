@@ -25,17 +25,29 @@ npm run dev
 
 ## signals
 
-**Live feeds:**
-- **Wikipedia attention** — crisis articles trending in real-time pageviews
-- **Safe-haven flows** — CHF/USD, JPY/USD movement as risk proxies
+**15 live data sources:**
 
-**Simulated (for now):**
-- Internet connectivity disruptions (BGP routes, latency)
-- Border/maritime traffic anomalies
-- GPS/GNSS interference patterns
-- Activity near sensitive locations
+| Signal | Source | What it tracks |
+|--------|--------|----------------|
+| Wikipedia attention | Wikimedia API | Crisis article pageviews in real-time |
+| Safe-haven flows | Exchange rates | CHF/USD, JPY/USD as risk proxies |
+| Earthquakes | USGS | M4.5+ seismic events globally |
+| Natural disasters | NASA EONET | Wildfires, storms, volcanic activity |
+| News tension | GDELT | Global news tone and event monitoring |
+| Internet outages | Cloudflare Radar | Regional connectivity disruptions |
+| Flight activity | OpenSky | Air traffic anomalies |
+| VIX | Yahoo Finance | Market fear/volatility index |
+| Treasury yields | Yahoo Finance / FRED | Yield curve, recession indicators |
+| Oil prices | Yahoo Finance | WTI crude, supply disruption proxy |
+| Gold prices | Yahoo Finance | Safe-haven demand |
+| Dollar index | Yahoo Finance | DXY, global flight-to-safety |
+| Polymarket | Polymarket API | Geopolitical crisis prediction odds |
+| Kalshi | Kalshi API | Political/economic event markets |
+| Pentagon Pizza | PizzINT | Late-night DC activity (classic OSINT) |
 
-Have a data source you want to add? [Fork the repo](https://github.com/delta-intel/delta-intelligence-dashboard/fork), add your data source, and create a [pull request &rarr;](https://github.com/delta-intel/delta-intelligence-dashboard/pulls).
+All signals have fallback handling — if an API goes down, the dashboard stays up.
+
+Want to add a source? [Fork it](https://github.com/delta-intel/delta-intelligence-dashboard/fork) and [PR it](https://github.com/delta-intel/delta-intelligence-dashboard/pulls).
 
 ## scoring
 
@@ -47,7 +59,7 @@ Everything normalized to 0-100:
 | 35-64 | Elevated | worth watching |
 | 65-100 | High | something's happening |
 
-Real API signals weighted 2x vs mock. Trend arrows show ±3pt movement.
+Trend arrows show ±3pt movement over last update.
 
 ## stack
 
@@ -62,10 +74,14 @@ Intentionally minimal. No auth, no persistence, no complexity. Just the feed.
 
 ```
 src/
-├── app/           # pages
-├── components/    # UI bits
-├── lib/           # data fetching + hooks
-└── types/         # TS definitions
+├── app/              # pages
+├── components/       # UI bits
+├── lib/
+│   ├── signals.ts        # core signals + aggregator
+│   ├── signals-phase1.ts # market signals (VIX, oil, gold, etc.)
+│   ├── signals-phase2.ts # prediction markets + OSINT
+│   └── ...
+└── types/            # TS definitions
 ```
 
 ## adding signals
@@ -78,9 +94,9 @@ PRs welcome if you have access to interesting data sources.
 
 ## limitations
 
-- Wikipedia API has ~24h lag
+- Some APIs rate-limit aggressively (OpenSky, etc.) — fallbacks kick in
 - No historical storage yet
-- Mock signals are probabilistic
+- Prediction markets can be illiquid on weekends
 
 ## disclaimer
 
