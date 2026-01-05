@@ -2,6 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { Signal, Region, REGION_LABELS } from '@/types';
+import type L from 'leaflet';
+
+// Extend Leaflet types for heat plugin
+declare module 'leaflet' {
+  interface HeatLayer extends L.Layer {
+    setLatLngs(latlngs: [number, number, number][]): this;
+  }
+  function heatLayer(latlngs: [number, number, number][], options?: object): HeatLayer;
+}
 
 interface HeatMapProps {
   signals: Signal[];
