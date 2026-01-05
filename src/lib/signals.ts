@@ -14,6 +14,11 @@ import {
   fetchGoldPriceSignal,
   fetchDollarIndexSignal,
 } from './signals-phase1';
+import {
+  fetchPolymarketSignal,
+  fetchKalshiSignal,
+  fetchPentagonPizzaSignal,
+} from './signals-phase2';
 
 // Helper to determine status from score
 function scoreToStatus(score: number): SignalStatus {
@@ -624,12 +629,16 @@ export async function fetchAllSignals(): Promise<Signal[]> {
     fetchGdeltSignal(),
     fetchInternetOutageSignal(),
     fetchFlightSignal(),
-    // Phase 1: Market & financial signals (all use Yahoo Finance - free, reliable)
+    // Phase 1: Market & financial signals (Yahoo Finance - free, reliable)
     fetchVIXSignal(),
     fetchCreditSpreadSignal(),
     fetchOilPriceSignal(),
     fetchGoldPriceSignal(),
     fetchDollarIndexSignal(),
+    // Phase 2: Prediction markets & OSINT signals
+    fetchPolymarketSignal(),
+    fetchKalshiSignal(),
+    fetchPentagonPizzaSignal(),
   ]);
 
   const signals: Signal[] = results
