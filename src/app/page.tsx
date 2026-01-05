@@ -143,7 +143,7 @@ export default function Dashboard() {
 
             {/* Right Side: Map */}
             <div className="lg:col-span-7">
-              <div className="border border-zinc-800 bg-zinc-900/30 h-full min-h-[280px] lg:min-h-0 overflow-hidden">
+              <div className="border border-zinc-800 bg-zinc-900/30 h-full min-h-[400px] lg:min-h-[400px] overflow-hidden">
                 <HeatMap signals={signals} selectedRegion={selectedRegion} />
               </div>
             </div>
