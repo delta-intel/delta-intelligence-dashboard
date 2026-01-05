@@ -96,7 +96,7 @@ export function HeatMap({ signals, selectedRegion }: HeatMapProps) {
       map.zoomControl.setPosition('bottomright');
 
       // Dark tile layer - using Stadia dark tiles
-      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=b65a1e40-d1e8-4877-beac-ead8d249580b', {
         maxZoom: 20,
       }).addTo(map);
 
