@@ -9,13 +9,14 @@ interface SignalCardProps {
   index: number;
 }
 
-function StatusDot({ status }: { status: string }) {
+function StatusDot({ status, size = 'sm' }: { status: string; size?: 'sm' | 'lg' }) {
   const colors: Record<string, string> = {
     normal: 'bg-emerald-500',
     elevated: 'bg-amber-500',
     high: 'bg-red-500 animate-pulse',
   };
-  return <span className={`w-2 h-2 rounded-full ${colors[status] || 'bg-zinc-500'}`} />;
+  const sizeClass = size === 'lg' ? 'w-3 h-3' : 'w-2 h-2';
+  return <span className={`${sizeClass} rounded-full ${colors[status] || 'bg-zinc-500'}`} />;
 }
 
 function ConfidenceMeter({ level }: { level: string }) {
@@ -33,6 +34,10 @@ function ConfidenceMeter({ level }: { level: string }) {
 }
 
 export function SignalCard({ signal, index }: SignalCardProps) {
+  const isHigh = signal.status === 'high';
+  const isElevated = signal.status === 'elevated';
+  const isFeatured = isHigh || (isElevated && index < 2);
+
   const statusColors: Record<string, string> = {
     normal: 'text-emerald-400',
     elevated: 'text-amber-400',
@@ -45,18 +50,25 @@ export function SignalCard({ signal, index }: SignalCardProps) {
     high: 'border-red-500/30 hover:border-red-500/50',
   };
 
+  // High signals span 2 columns, first elevated spans 2 on larger screens
+  const colSpan = isHigh
+    ? 'md:col-span-2 lg:col-span-2'
+    : isElevated && index < 2
+    ? 'md:col-span-2 lg:col-span-1'
+    : '';
+
   return (
     <div
-      className={`border bg-zinc-900/20 transition-all duration-200 animate-fade-in ${statusBorders[signal.status]}`}
+      className={`border bg-zinc-900/20 transition-all duration-200 animate-fade-in ${statusBorders[signal.status]} ${colSpan}`}
       style={{ animationDelay: `${index * 30}ms` }}
     >
-      <div className="p-4">
+      <div className={isFeatured ? 'p-5' : 'p-4'}>
         {/* Top row: Status + Name + Score */}
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <StatusDot status={signal.status} />
+            <StatusDot status={signal.status} size={isFeatured ? 'lg' : 'sm'} />
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-zinc-200 truncate">
+              <h3 className={`font-medium text-zinc-200 ${isFeatured ? 'text-base' : 'text-sm'} ${isHigh ? '' : 'truncate'}`}>
                 {signal.name}
               </h3>
               <div className="text-[10px] text-zinc-600 uppercase tracking-wider">
@@ -65,19 +77,19 @@ export function SignalCard({ signal, index }: SignalCardProps) {
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className={`text-2xl font-bold tabular-nums ${statusColors[signal.status]}`}>
+            <div className={`font-bold tabular-nums ${statusColors[signal.status]} ${isFeatured ? 'text-3xl' : 'text-2xl'}`}>
               {signal.score}
             </div>
           </div>
         </div>
 
         {/* Explanation */}
-        <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+        <p className={`text-zinc-400 leading-relaxed mb-4 ${isFeatured ? 'text-sm' : 'text-xs line-clamp-2'}`}>
           {signal.explanation}
         </p>
 
         {/* Bottom row: Metrics */}
-        <div className="flex items-center justify-between text-[10px]">
+        <div className="flex items-center justify-between text-[10px] flex-wrap gap-2">
           <div className="flex items-center gap-4">
             {/* Delta */}
             <div className="flex items-center gap-1.5">

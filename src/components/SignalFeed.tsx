@@ -10,9 +10,9 @@ interface SignalFeedProps {
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-3">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="border border-zinc-800 bg-zinc-900/20 p-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className={`border border-zinc-800 bg-zinc-900/20 p-4 ${i === 0 ? 'md:col-span-2 lg:col-span-2' : ''}`}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-2 h-2 bg-zinc-800 rounded-full animate-pulse" />
             <div className="h-4 w-40 bg-zinc-800/50 animate-pulse" />
@@ -39,14 +39,16 @@ export function SignalFeed({ signals, isLoading }: SignalFeedProps) {
     );
   }
 
-  // Sort: high first, then elevated, then normal
+  // Sort: high first, then elevated, then normal (by score within each tier)
   const sorted = [...signals].sort((a, b) => {
     const order = { high: 0, elevated: 1, normal: 2 };
-    return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+    const tierDiff = (order[a.status] ?? 3) - (order[b.status] ?? 3);
+    if (tierDiff !== 0) return tierDiff;
+    return b.score - a.score; // Higher score first within tier
   });
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {sorted.map((signal, index) => (
         <SignalCard key={signal.id} signal={signal} index={index} />
       ))}
