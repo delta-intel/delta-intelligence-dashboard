@@ -6,3 +6,4 @@ export { RegionalFilter } from './RegionalFilter';
 export { StatusBadge, ConfidenceBadge } from './StatusBadge';
 export { ErrorState } from './ErrorState';
 export { HeatMap } from './HeatMap';
+export { TopDrivers } from './TopDrivers';

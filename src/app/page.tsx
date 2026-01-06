@@ -7,6 +7,7 @@ import {
   SignalFeed,
   RegionalFilter,
   ErrorState,
+  TopDrivers,
 } from '@/components';
 import { getRiskLevel, getTrendIcon, getTrendColor } from '@/lib/utils';
 
@@ -52,6 +53,7 @@ export default function Dashboard() {
 
         {/* HERO: Risk Score + Stats + Map */}
         <section className="mb-8">
+          <div className="text-[10px] text-zinc-600 tracking-widest uppercase mb-3">Overview</div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
             {/* Left Side: Stats */}
@@ -150,8 +152,15 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Top Drivers */}
+        <section className="mb-8">
+          <div className="text-[10px] text-zinc-600 tracking-widest uppercase mb-3">Drivers</div>
+          <TopDrivers signals={signals} />
+        </section>
+
         {/* Regional Filter */}
         <section className="mb-6">
+          <div className="text-[10px] text-zinc-600 tracking-widest uppercase mb-3">Region</div>
           <div className="border border-zinc-800/50 bg-zinc-900/20 p-4">
             <RegionalFilter
               selectedRegion={selectedRegion}
@@ -170,12 +179,10 @@ export default function Dashboard() {
 
         {/* Signal Feed */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[10px] text-zinc-500 tracking-wider uppercase">
-              Signal Details
-            </h2>
-            <span className="text-[10px] text-zinc-600">
-              {filteredSignals.length} signal{filteredSignals.length !== 1 ? 's' : ''} in view
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] text-zinc-600 tracking-widest uppercase">Signals</div>
+            <span className="text-[10px] text-zinc-700">
+              {filteredSignals.length} active
             </span>
           </div>
           <SignalFeed signals={filteredSignals} isLoading={isLoading} />
